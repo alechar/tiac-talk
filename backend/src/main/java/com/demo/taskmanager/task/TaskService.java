@@ -41,10 +41,10 @@ public class TaskService {
         if (existing == null) {
             return null; // OLD STYLE: null instead of exception or Optional
         }
-        existing.setTitle(dto.getTitle());
-        existing.setDescription(dto.getDescription());
-        existing.setPriority(dto.getPriority());
-        existing.setStatus(dto.getStatus());
+        existing.setTitle(dto.title());
+        existing.setDescription(dto.description());
+        existing.setPriority(dto.priority());
+        existing.setStatus(dto.status());
         Task saved = taskRepository.save(existing);
         return TaskDTO.fromEntity(saved);
     }
