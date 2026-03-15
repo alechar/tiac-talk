@@ -1,4 +1,3 @@
-// OLD STYLE: Plain class with getters instead of a Java record
 package com.demo.taskmanager.task;
 
 import java.time.LocalDateTime;

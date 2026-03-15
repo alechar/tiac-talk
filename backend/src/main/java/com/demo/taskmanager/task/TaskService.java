@@ -18,12 +18,12 @@ public class TaskService {
         return taskRepository.findAll()
                 .stream()
                 .map(TaskDTO::fromEntity)
-                .collect(Collectors.toList()); // OLD STYLE: could use .toList()
+                .collect(Collectors.toList());
     }
 
     public TaskDTO getTaskById(Long id) {
         Task task = taskRepository.findById(id)
-                .orElse(null); // OLD STYLE: returns null instead of Optional
+                .orElse(null);
         if (task == null) {
             return null;
         }
@@ -39,7 +39,7 @@ public class TaskService {
     public TaskDTO updateTask(Long id, TaskDTO dto) {
         Task existing = taskRepository.findById(id).orElse(null);
         if (existing == null) {
-            return null; // OLD STYLE: null instead of exception or Optional
+            return null;
         }
         existing.setTitle(dto.getTitle());
         existing.setDescription(dto.getDescription());

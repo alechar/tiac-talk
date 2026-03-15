@@ -18,7 +18,6 @@ public class TaskController {
 
     @GetMapping
     public List<TaskDTO> getAllTasks() {
-        // OLD STYLE: returns raw list, no ResponseEntity wrapper
         return taskService.getAllTasks();
     }
 
@@ -33,7 +32,6 @@ public class TaskController {
 
     @PostMapping
     public TaskDTO createTask(@RequestBody TaskDTO dto) {
-        // OLD STYLE: no validation, no ResponseEntity.created() with location header
         return taskService.createTask(dto);
     }
 

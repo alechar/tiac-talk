@@ -1,9 +1,3 @@
-// =============================================================================
-// INTENTIONALLY OLD-STYLE JAVA — This is the "before" state for the demo.
-// During the demo we ask Copilot to generate code WITHOUT custom instructions
-// and get output similar to this. Then we add copilot-instructions.md and show
-// how the SAME prompt produces modern Java 21 code (records, sealed types, etc.)
-// =============================================================================
 package com.demo.taskmanager.task;
 
 import jakarta.persistence.*;
@@ -23,7 +17,7 @@ public class Task {
     private String description;
 
     @Column(nullable = false)
-    private String priority; // OLD STYLE: String instead of enum
+    private String priority;
 
     @Column(nullable = false)
     private String status;
