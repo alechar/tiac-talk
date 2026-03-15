@@ -1,18 +1,61 @@
-# Demo Script — GitHub Copilot Customization (45 min)
+# Demo Script — GitHub Copilot Customization (~50 min)
 
-> **Prep**: Before you start, rename `.github/` to `.github-ready/` so the project
-> starts *without* customizations. You'll copy files back during the demo.
+> **Prep — do all of this BEFORE the demo:**
 >
+> ### 1. Neon DB setup
+> - Create a free project at [console.neon.tech](https://console.neon.tech)
+> - Copy the connection string (pooler endpoint)
+> - Set environment variables (PowerShell profile or system env):
+>   ```powershell
+>   $env:NEON_API_KEY  = "<your-neon-api-key>"
+>   $env:NEON_HOST     = "<your-project>.pooler.us-east-2.aws.neon.tech"
+>   $env:NEON_DB       = "neondb"
+>   $env:NEON_USER     = "<your-user>"
+>   $env:NEON_PASSWORD = "<your-password>"
+>   ```
+> - Seed the Neon database with the schema and sample data:
+>   ```sql
+>   CREATE TABLE IF NOT EXISTS tasks (
+>       id BIGSERIAL PRIMARY KEY,
+>       title VARCHAR(255) NOT NULL,
+>       description TEXT,
+>       priority VARCHAR(20),
+>       status VARCHAR(20) DEFAULT 'TODO',
+>       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+>       updated_at TIMESTAMP
+>   );
+>   INSERT INTO tasks (title, description, priority, status, created_at) VALUES
+>   ('Set up CI/CD pipeline', 'Configure GitHub Actions for build and deploy', 'HIGH', 'TODO', CURRENT_TIMESTAMP),
+>   ('Write API documentation', 'Document all REST endpoints with OpenAPI', 'MEDIUM', 'TODO', CURRENT_TIMESTAMP),
+>   ('Fix login redirect bug', 'Users are not redirected after login on mobile', 'CRITICAL', 'IN_PROGRESS', CURRENT_TIMESTAMP),
+>   ('Add dark mode support', 'Implement dark mode toggle in the frontend', 'LOW', 'TODO', CURRENT_TIMESTAMP),
+>   ('Database backup script', 'Create automated daily backup procedure', 'HIGH', 'TODO', CURRENT_TIMESTAMP);
+>   ```
+>
+> ### 2. GitHub Cloud Agent prep
+> - Push the repo to GitHub (with `.github/copilot-instructions.md` and instruction files)
+> - Create an Issue titled **"Refactor TaskDTO from class to Java 21 record"** with body:
+>   > Convert TaskDTO.java from a plain class to a Java 21 record.
+>   > Update all usages in TaskService and TaskController.
+>   > Ensure tests still pass.
+> - Assign it to `@copilot` and let it create a PR (takes ~5 min)
+> - Keep the PR open — you'll show it during Phase 6
+>
+> ### 3. Hide customizations
+> Rename `.github/` and `.vscode/` so the project starts *without* customizations:
 > ```powershell
 > cd C:\projects\copilot-demo
 > Rename-Item .github .github-ready
+> Rename-Item .vscode .vscode-ready
 > ```
 >
-> To reset between dry runs:
+> ### Reset between dry runs
 > ```powershell
 > Remove-Item .github -Recurse -Force -ErrorAction SilentlyContinue
+> Remove-Item .vscode -Recurse -Force -ErrorAction SilentlyContinue
 > Rename-Item .github-ready .github
-> # then rename again before the real demo
+> Rename-Item .vscode-ready .vscode
+> # then rename both again before the real demo
 > ```
 
 ---
@@ -27,19 +70,20 @@
 4. Toggle **Agent mode** (the dropdown at the top of chat). Explain:
    - *"Chat = Q&A. Agent = can read files, run commands, make edits."*
 5. Briefly mention the goal:
-   > "Copilot is powerful but generic. Today I'll show how custom **instructions**,
-   > **prompts**, and **agents** make it follow YOUR team's conventions automatically."
+   > "Copilot is powerful but generic. Today I'll show five ways to customize it:
+   > **instructions**, **prompts**, **agents**, **MCP** for connecting to live databases,
+   > and the **cloud coding agent** that creates PRs while you sleep."
 
 ### Talking points
 - "Copilot sees your code but doesn't know your team's rules"
-- "Custom instructions, prompts, and agents live in `.github/` — version controlled, team-shared"
-- "By the end, you'll see the same prompt produce dramatically different results"
+- "Custom instructions, prompts, agents, and MCP config live in `.github/` and `.vscode/` — version controlled, team-shared"
+- "By the end, you'll see the same prompt produce dramatically different results — and Copilot querying a live Postgres database"
 
 ---
 
-## Phase 2 — Workspace & File Instructions (12 min)
+## Phase 2 — Workspace & File Instructions (10 min)
 
-### 2a. WITHOUT instructions — the "before" (3 min)
+### 2a. WITHOUT instructions — the "before" (2 min)
 
 **Make sure `.github/` does NOT exist yet.**
 
@@ -48,14 +92,10 @@
    > and a TaskDTO with fields: id (Long), title (String), description (String),
    > priority (Priority), createdAt (LocalDateTime)
 
-2. **Let the audience see the output.** It will likely be:
-   - A plain Java class with getters/setters/constructors
-   - No records, no Java 21 features
-   - Generic package like `com.example` or the root package
+2. **Let the audience see the output.** It will likely be a plain Java class with getters/setters — no records, no Java 21 features, generic package.
 
 3. **Point out** (don't fix yet):
-   - *"This works, but it's pre-Java 21 style."*
-   - *"No records, no sealed types, not our package convention."*
+   - *"This works, but it's pre-Java 21 style. No records, not our package convention."*
    - *"If 5 developers ask the same question, they'll get 5 different styles."*
 
 ### 2b. Add workspace instructions — live-code (4 min)
@@ -113,11 +153,11 @@
 
 ---
 
-## Phase 3 — Reusable Prompts (10 min)
+## Phase 3 — Reusable Prompts (8 min)
 
-### 3a. WITHOUT prompt — the "before" (3 min)
+### 3a. WITHOUT prompt — the "before" (2 min)
 
-1. Type in chat:
+1. Flash this in chat (don't wait for full output — the point is the wall of text):
    > Create a complete CRUD REST API for a Category entity with fields:
    > id (Long), name (String), description (String).
    > Include controller, service, repository, DTO record, and tests.
@@ -126,9 +166,8 @@
    > Use @WebMvcTest for controller tests with AssertJ and @DisplayName.
 
 2. **Point out**: 
-   - *"That's a LOT of typing — and I'd have to write this every time I need a new entity."*
+   - *"That's a LOT of typing — every time, for every entity."*
    - *"What if a junior dev forgets half of those instructions?"*
-   - The output probably works, but you can't guarantee consistency across the team.
 
 ### 3b. Create a reusable prompt — live-code (4 min)
 
@@ -176,9 +215,9 @@
 
 ---
 
-## Phase 4 — Custom Agents (12 min)
+## Phase 4 — Custom Agents (10 min)
 
-### 4a. WITHOUT agent — the "before" (3 min)
+### 4a. WITHOUT agent — the "before" (2 min)
 
 1. Make sure you're in **Agent mode** (important for the contrast).
 2. Type in chat:
@@ -187,10 +226,9 @@
 
 3. **Point out the risks**:
    - In agent mode, Copilot has full tool access — it might try to **edit files** even though you only wanted a review
-   - The review may be generic, unstructured, and miss your team's specific conventions
    - *"I just wanted feedback, not changes. But there's no guardrail."*
 
-### 4b. Create the code-reviewer agent — live-code (4 min)
+### 4b. Create the code-reviewer agent — live-code (3 min)
 
 1. Create `.github/agents/code-reviewer.agent.md`.
    
@@ -248,36 +286,120 @@
 
 ---
 
-## Phase 5 — MCP Brief Touch (4 min)
+## Phase 5 — MCP & Neon DB (10 min)
 
-### What to show
+### 5a. What is MCP? (1 min)
+
 1. Explain MCP in one sentence:
    > "MCP — Model Context Protocol — lets Copilot connect to external tools:
    > databases, GitHub APIs, issue trackers, anything with an MCP server."
 
-2. Show a pre-configured example. If you have GitHub MCP set up:
-   - In the agent picker or chat, ask:
-     > Create a GitHub issue titled "Refactor TaskDTO to record" with the
-     > findings from the code review
-   - Show it creates the issue via the GitHub MCP server
+2. *"Today we'll connect Copilot to a live Neon PostgreSQL database — serverless Postgres in the cloud. Copilot will query real data, not just read files."*
 
-3. Or show how an agent can reference MCP tools:
-   ```yaml
-   tools: [read, search, mcp_github/*]
+### 5b. Set up Neon MCP — live-code (2 min)
+
+1. Create the `.vscode/` folder and `mcp.json` live:
+   ```powershell
+   mkdir .vscode
+   copy .vscode-ready\mcp.json .vscode\
    ```
-   *"Your custom agents can use MCP tools — connecting Copilot to your full workflow."*
 
-### Talking points
-- *"MCP is an open standard — works with any compatible server"*
-- *"Think: database queries, Jira ticket creation, Slack notifications — all from Copilot"*
-- *"We're not going deep on MCP today, but it's the fourth pillar of customization"*
+2. Open `.vscode/mcp.json` on screen. Walk through:
+   - **`"neon"`** — server name, shows up in Copilot's tool list
+   - **`"url": "https://mcp.neon.tech/sse"`** — connects to Neon's hosted MCP server, no local install needed
+   - **`Authorization` header** — authenticates with your Neon API key
+   - *"This is all it takes — one JSON file, and Copilot can talk to your database."*
+
+3. Show VS Code detecting the MCP server: the "Start" button appears in chat's tool picker. **Click Start** to connect.
+
+### 5c. Query the live database from chat (3 min)
+
+1. In Copilot Chat (agent mode), type:
+   > List all tables in my Neon database
+
+   - Show it runs a query and returns the `tasks` table.
+
+2. Then ask:
+   > Show me all tasks with priority HIGH
+
+   - It runs `SELECT * FROM tasks WHERE priority = 'HIGH'` and returns the results.
+
+3. Then ask:
+   > What's the distribution of task statuses? Show as a summary.
+
+   - It runs an aggregate query and presents the counts.
+
+4. **Point out**:
+   - *"Copilot just ran real SQL against a live Postgres instance — not reading files, not guessing."*
+   - *"This is your staging database, your analytics DB, your production read-replica — whatever you connect."*
+
+### 5d. Switch the backend to Neon with Agent mode (3 min)
+
+1. Switch to **Agent mode**. Type:
+   > Switch our Spring Boot backend from H2 to the Neon PostgreSQL database.
+   > Add the PostgreSQL driver to pom.xml and create an application-neon.properties
+   > profile with connection settings from environment variables.
+
+2. **Watch Copilot**:
+   - Add `postgresql` dependency to `pom.xml`
+   - Create `application-neon.properties` with the Neon connection string
+   - *"Agent mode reads, edits, and runs commands. Combined with MCP's database knowledge, it just migrated our data layer."*
+
+3. (If time) Run the backend with the Neon profile to prove it connects:
+   ```powershell
+   cd backend
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=neon
+   ```
+
+### 5e. Talking points (1 min)
+- *"MCP is an open standard — Neon, GitHub, Jira, Slack, any compatible server"*
+- *"Your custom agents can use MCP tools too"*:
+  ```yaml
+  tools: [read, search, mcp_neon/*]
+  ```
+- *"This turns Copilot from a code helper into a full-stack assistant that understands your live data"*
 
 ---
 
-## Phase 6 — Wrap-up (2 min)
+## Phase 6 — Cloud Coding Agent (5 min)
+
+### 6a. What is the Copilot coding agent? (1 min)
+
+1. *"Everything we've seen runs locally in VS Code. But Copilot can also work autonomously in the cloud."*
+2. *"You assign a GitHub Issue to Copilot, and it opens a PR — reading your instructions, writing code, running tests, iterating on failures."*
+3. *"It uses the SAME `.github/copilot-instructions.md` and file instructions you already set up — your customizations carry over."*
+
+### 6b. Show the Issue assignment (1 min)
+
+1. Open **GitHub in the browser**. Navigate to the repo.
+2. Show the pre-created Issue: **"Refactor TaskDTO from class to Java 21 record"**
+3. Point out: the issue is assigned to **`@copilot`**.
+4. *"I assigned this before the talk. Here's what happened while we were presenting..."*
+
+### 6c. Walk through the PR (2 min)
+
+1. Open the **PR that Copilot created** from the Issue.
+2. Walk through the diff:
+   - `TaskDTO.java` converted from a class with getters/setters to a `record`
+   - Usages in `TaskService.java` and `TaskController.java` updated
+   - Tests updated or still passing
+3. **Point out key observations**:
+   - *"It followed our `copilot-instructions.md` — records for DTOs, Optional return types"*
+   - *"It read the testing instructions and used `@DisplayName`, AssertJ"*
+   - *"It ran tests, found failures, and iterated until they passed"*
+
+### 6d. Talking points (1 min)
+- *"Cloud agent is async — assign the issue, go for coffee, review the PR when you're back"*
+- *"Best for well-scoped, clearly-described issues with good instructions"*
+- *"Think: refactors, dependency upgrades, boilerplate tasks, migration scripts"*
+- *"Your `.github/` customizations are the secret sauce — the better your instructions, the better the automated PRs"*
+
+---
+
+## Phase 7 — Wrap-up (2 min)
 
 ### What to show
-1. Open the file tree — show the `.github/` folder with everything created during the demo:
+1. Open the file tree — show everything created during the demo:
    ```
    .github/
    ├── copilot-instructions.md          ← "How we code"
@@ -289,24 +411,29 @@
    └── agents/
        ├── code-reviewer.agent.md       ← "Who reviews"
        └── test-writer.agent.md         ← "Who tests"
+   .vscode/
+   └── mcp.json                         ← "What tools Copilot can reach"
    ```
 
-2. Recap the four pillars:
+2. Recap the five pillars:
    | Primitive | Purpose | Analogy |
    |-----------|---------|---------|
    | **Instructions** | How we code | Team style guide |
    | **Prompts** | What to generate | Task templates |
    | **Agents** | Who does what | Specialized team members |
    | **MCP** | What tools exist | External integrations |
+   | **Cloud Agent** | Async autonomy | Junior dev on the team |
 
 3. Key takeaway:
-   > "All of this is just Markdown files in `.github/`. Version controlled.
-   > Team shared. No plugin to install. Every developer gets the same
+   > "All of this is Markdown files in `.github/` and a JSON file in `.vscode/`.
+   > Version controlled. Team shared. No plugin to install.
+   > Every developer — and even the cloud agent — gets the same
    > Copilot behavior from day one."
 
 4. Point to resources:
    - [VS Code docs: Copilot Customization](https://code.visualstudio.com/docs/copilot/customization)
-   - The project they just saw is available at `C:\projects\copilot-demo`
+   - [Neon MCP Server](https://neon.tech/docs/ai/neon-mcp-server)
+   - [GitHub Copilot Coding Agent](https://docs.github.com/en/copilot/using-github-copilot/using-the-copilot-coding-agent)
 
 ---
 
@@ -320,8 +447,12 @@ If live Copilot output is poor or slow during the demo:
 2. **Switch to walkthrough mode**: Open the existing old-style code (Task.java, TaskDTO.java)
    next to what a "modern" version would look like. Explain the contrast verbally.
 
-3. **Network issues**: The backend + frontend both run locally. MCP is the only
-   part that needs network. Skip Phase 5 and give more time to Q&A.
+3. **Network issues**: The backend + frontend both run locally on H2. MCP (Phase 5) and
+   the cloud agent PR (Phase 6) need network. If the network is down:
+   - **Phase 5**: Show the `.vscode/mcp.json` config and pre-recorded screenshots of the
+     Neon queries. Explain verbally — the config file is still impactful to see.
+   - **Phase 6**: Show the pre-created PR in screenshots instead of live GitHub.
+   - Give the recovered time to Q&A.
 
 ---
 
@@ -331,8 +462,9 @@ If live Copilot output is poor or slow during the demo:
 |-------|---------------------|
 | 0:00 | Starting Phase 1 (intro) |
 | 0:05 | Starting Phase 2 (instructions) |
-| 0:17 | Starting Phase 3 (prompts) |
-| 0:27 | Starting Phase 4 (agents) |
-| 0:39 | Starting Phase 5 (MCP) |
-| 0:43 | Starting Phase 6 (wrap-up) |
-| 0:45 | Done |
+| 0:15 | Starting Phase 3 (prompts) |
+| 0:23 | Starting Phase 4 (agents) |
+| 0:33 | Starting Phase 5 (MCP & Neon DB) |
+| 0:43 | Starting Phase 6 (cloud coding agent) |
+| 0:48 | Starting Phase 7 (wrap-up) |
+| 0:50 | Done |

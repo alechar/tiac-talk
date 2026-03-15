@@ -26,6 +26,7 @@
 - Custom hooks for data fetching and shared logic
 - Prefer `const` arrow functions for components: `const MyComponent = () => { ... }`
 - CSS Modules or inline styles — no global CSS classes for components
+- NEVER use `any` type — always define proper types for props, state, and API responses
 
 ## Code Quality
 - No `System.out.println` — use SLF4J logger

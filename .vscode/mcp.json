@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "neon": {
+      "type": "sse",
+      "url": "https://mcp.neon.tech/sse",
+      "headers": {
+        "Authorization": "Bearer napi_0olzlh99i00r9lk5s3p5mi05tabr5tyl7ky05vq7yclyg12zymqxzwr59hqwnuuk"
+      }
+    }
+  }
+}
