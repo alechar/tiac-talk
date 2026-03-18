@@ -88,15 +88,17 @@
 **Make sure `.github/` does NOT exist yet.**
 
 1. Open Copilot Chat (agent mode). Type:
-   > Create a Priority enum with values LOW, MEDIUM, HIGH, CRITICAL
-   > and a TaskDTO with fields: id (Long), title (String), description (String),
-   > priority (Priority), createdAt (LocalDateTime)
+   Add a Tag feature to this task management app. Create a TagDTO with fields id (Long) and name (String), a TagRepository extending JpaRepository, and a TagService with findAll(), findById(Long id), and create(TagDTO dto) methods. Also add a TagController with GET /api/tags and POST /api/tags endpoints.
 
-2. **Let the audience see the output.** It will likely be a plain Java class with getters/setters — no records, no Java 21 features, generic package.
+2. **Let the audience see the output.** Watch for these specific details:
 
-3. **Point out** (don't fix yet):
-   - *"This works, but it's pre-Java 21 style. No records, not our package convention."*
-   - *"If 5 developers ask the same question, they'll get 5 different styles."*
+3. **Point out** (don't fix yet — these are your guaranteed talking points):
+   - **Package**: It will use something like `com.example.demo`, `com.taskmanager`, or just `com.demo.taskmanager` — *not* the feature-scoped `com.demo.taskmanager.tag`. This is always wrong without instructions.
+   - **`findById` return type**: Likely returns `Tag` or `null` directly, not `Optional<Tag>`.
+   - **POST endpoint**: Likely returns `200 OK` with the saved entity — our conventions require `201 Created` with a `Location` header.
+   - **Injection**: May use `@Autowired` field injection instead of constructor injection.
+
+   > **If the output happens to look correct on some of these:** That's actually your point — *"It guessed right this time. But what about the next developer? What about tomorrow? With no instructions, every answer is a coin flip. With instructions, it's always consistent."*
 
 ### 2b. Add workspace instructions — live-code (4 min)
 
@@ -122,10 +124,13 @@
 
 1. **Open a fresh chat** (important — so the audience sees the clean comparison).
 2. Paste the exact same prompt from step 2a.
-3. **Show the output side by side** (or point out the differences):
-   - Now uses `record TaskDTO(...)` instead of a class
-   - Proper package `com.demo.taskmanager.task`
-   - "Same prompt, completely different quality — because Copilot now knows our rules"
+3. **Show the output and call out each difference:**
+   - **Package**: Now `com.demo.taskmanager.tag` — feature-based, exactly as the instruction says.
+   - **`TagDTO`**: Now a `record TagDTO(Long id, String name)` — no getters, no boilerplate.
+   - **`findById`**: Now returns `Optional<Tag>` — never null.
+   - **POST endpoint**: Now returns `ResponseEntity.created(uri).body(tag)` with `201 Created` and a `Location` header.
+   - **Service wiring**: Constructor injection with `final` field — no `@Autowired`.
+   - *"Same prompt. Five concrete differences. Because Copilot now knows our rules."*
 
 ### 2d. Add file-specific instruction (3 min)
 
